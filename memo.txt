@@ -1,0 +1,5 @@
+gcc createfile.c -o createfile -lpthread
+
+gcc user.c -o user -lpthread
+
+先运行createfile再运行user

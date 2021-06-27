@@ -177,7 +177,7 @@ int removeFile(char* name){
 	int entry = findEntryInRoot(name);
 	//未找到
 	if(entry==-1){
-		printf("filename not found!");
+		printf("filename not found!\n");
 		return 0;
 	}
 	//TODO 检查是否有进程在读？
@@ -224,11 +224,11 @@ int changeName(char* oldname, char* newname){
 	int entry = findEntryInRoot(oldname);
 	//未找到
 	if(entry==-1){
-		printf("filename not found!");
+		printf("filename not found!\n");
 		return 0;
 	}
 	if(strlen(oldname)  >= BUFFERSIZE || strlen(newname)  >= BUFFERSIZE){
-		printf("filename too long!");
+		printf("filename too long!\n");
 		return 0;
 	}
 	//修改
@@ -238,10 +238,11 @@ int changeName(char* oldname, char* newname){
 
 //TODO 读文件
 int readFile(char* name){
+	printf("start reading file...\n");
 	int entry = findEntryInRoot(name);
 	//未找到
 	if(entry==-1){
-		printf("filename not found!");
+		printf("filename not found!\n");
 		return 0;
 	}
 	if(rootDirTable->dirs[entry].type=='0'){
@@ -250,17 +251,21 @@ int readFile(char* name){
 	}
 	int val;
 	//wait读
+	rootDirTable->dirs[entry].inode.read_sem = sem_open("read_sem",0);
 	if(sem_wait(rootDirTable->dirs[entry].inode.read_sem) == -1){
 		printf("read_sem error!\n");
 		return 0;
 	}
 	sem_getvalue(rootDirTable->dirs[entry].inode.read_sem, &val);
+	//printf("wait complete.\n");
 	//如果为第一个读就wait写
 	if(val == MAXREADER-1){
+		rootDirTable->dirs[entry].inode.write_sem = sem_open("write_sem",0);
 		if(sem_wait(rootDirTable->dirs[entry].inode.write_sem) == -1){
 			printf("write_sem error!\n");
 			return 0;
 		}
+		//printf("wait write_sem complete.\n");
 	}
 	printf("Read [%s] complete. press enter to exit read.",rootDirTable->dirs[entry].fileName);
 	getchar();
@@ -279,7 +284,7 @@ int closeFile(char* name){
 	int entry = findEntryInRoot(name);
 	//未找到
 	if(entry==-1){
-		printf("filename not found!");
+		printf("filename not found!\n");
 		return 0;
 	}
 	if(rootDirTable->dirs[entry].type=='0'){
@@ -289,8 +294,10 @@ int closeFile(char* name){
 	//struct iNode node = rootDirTable->dirs[entry].inode;
 	int val;
 	//如果为最后一个读则signal写
+	rootDirTable->dirs[entry].inode.read_sem = sem_open("read_sem",0);
 	sem_getvalue(rootDirTable->dirs[entry].inode.read_sem, &val);
 	if(val == MAXREADER-1){
+		rootDirTable->dirs[entry].inode.write_sem = sem_open("write_sem",0);
 		sem_post(rootDirTable->dirs[entry].inode.write_sem);
 	}
 	//signal读
@@ -300,6 +307,7 @@ int closeFile(char* name){
 
 //TODO 写文件
 int writeFile(char* name){
+	printf("start writing file...\n");
 	int entry = findEntryInRoot(name);
 	//未找到
 	if(entry==-1){
@@ -312,6 +320,7 @@ int writeFile(char* name){
 	}
 	
 	//wait写
+	rootDirTable->dirs[entry].inode.write_sem = sem_open("write_sem",0);
 	if(sem_wait(rootDirTable->dirs[entry].inode.write_sem) == -1){
 			printf("write_sem error!\n");
 			return 0;
@@ -319,6 +328,7 @@ int writeFile(char* name){
 	printf("Read [%s] complete. press enter to exit write.",rootDirTable->dirs[entry].fileName);
 	getchar();
 	//post写
+	rootDirTable->dirs[entry].inode.write_sem = sem_open("write_sem",0);
 	sem_post(rootDirTable->dirs[entry].inode.write_sem);
 	return 1;
 }
