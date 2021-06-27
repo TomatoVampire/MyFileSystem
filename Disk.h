@@ -180,7 +180,17 @@ int removeFile(char* name){
 		printf("filename not found!\n");
 		return 0;
 	}
-	//TODO 检查是否有进程在读？
+	printf("removing file...\n");
+	//TODO 检查是否有进程在使用？
+	int rn,wn;
+	rootDirTable->dirs[entry].inode.read_sem = sem_open("read_sem",0);
+	rootDirTable->dirs[entry].inode.write_sem = sem_open("write_sem",0);
+	sem_getvalue(rootDirTable->dirs[entry].inode.read_sem, &rn);
+	sem_getvalue(rootDirTable->dirs[entry].inode.write_sem, &wn);
+	if(rn < MAXREADER || wn == 0){
+		printf("Other user is using this file, cannot remove now.\n");
+		return 0;
+	}
 	
 	//连接数为1则可以删除
 	if(rootDirTable->dirs[entry].inode.link == 1){
